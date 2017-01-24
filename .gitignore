@@ -1,0 +1,13 @@
+*.slo
+*.lo
+*.o
+*.obj
+*.d
+*.so
+*.out
+*.root
+*.swp
+chikuma_nim_easiroc/reader/NIMEASIROCReaderComp 
+chikuma_nim_easiroc/monitor/NIMEASIROCMonitorComp 
+*/autogen
+*/.depend
