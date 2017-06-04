@@ -1,9 +1,11 @@
 COMP_NAME = NIMEASIROCReader
 
+LDADD = $(top_builddir)/src/libyaml.la
 all: $(COMP_NAME)Comp
 
 SRCS += $(COMP_NAME).cpp
 SRCS += $(COMP_NAME)Comp.cpp
+#SRCS += easirocdevice.o easiroc_config.o FileManager.o ParameterManager.o StringManager.o
 
 # Socket library
 LDLIBS += -L$(DAQMW_LIB_DIR) -lSock

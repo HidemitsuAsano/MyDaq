@@ -101,14 +101,14 @@ int NIMEASIROCReader::parse_params(::NVList* list)
         std::cerr << "sname: " << sname << "  ";
         std::cerr << "value: " << svalue << std::endl;
 
-        if ( sname == "srcAddr" ) {
+        if ( sname == "srcAddr1" ) {
             srcAddrSpecified = true;
             if (m_debug) {
                 std::cerr << "source addr: " << svalue << std::endl;
             }
             m_srcAddr = svalue;
         }
-        if ( sname == "srcPort" ) {
+        if ( sname == "srcPort1" ) {
             srcPortSpecified = true;
             if (m_debug) {
                 std::cerr << "source port: " << svalue << std::endl;
@@ -116,7 +116,6 @@ int NIMEASIROCReader::parse_params(::NVList* list)
             char* offset;
             m_srcPort = (int)strtol(svalue.c_str(), &offset, 10);
         }
-
     }
     if (!srcAddrSpecified) {
         std::cerr << "### ERROR:data source address not specified\n";
@@ -174,6 +173,10 @@ int NIMEASIROCReader::daq_stop()
         delete m_sock;
         m_sock = 0;
     }
+    
+    // Finalize EASIROC
+    // TODO : implement this function
+    //finalize_device(); 
 
     return 0;
 }
@@ -195,7 +198,8 @@ int NIMEASIROCReader::daq_resume()
 int NIMEASIROCReader::read_data_from_detectors()
 {
     int received_data_size = 0;
-
+    
+    //TODO modify here
     /// write your logic here
     /// read 1024 byte data from data server
     int status = m_sock->readAll(m_data, SEND_BUFFER_SIZE);
