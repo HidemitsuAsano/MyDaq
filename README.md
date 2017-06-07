@@ -1,7 +1,7 @@
 Hidemitsu Asano
 
 
--- 1 How to make 
+#  How to install
 
    1. make util
    2. make reader/monitor
