@@ -8,3 +8,7 @@ Hidemitsu Asano
    3. cd $HOME/MyDaq
    4. ln -s chikuma_nim_easiroc/reader/ruby1/Gemfile .
    5. ./chikuma_nim_easiroc/reader/ruby1/install.sh
+
+
+# How to start DAQ
+  ./start_daq.sh
