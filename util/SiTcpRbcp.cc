@@ -14,7 +14,8 @@ const int kMaxBuf = 1024;
 SiTcpRbcp::SiTcpRbcp(const std::string& host,
                      int port)
   : m_sock(host, port),
-    m_header()
+    m_header(),
+    m_verbose(0)
 {
   m_sock.connectUDP(); 
 }
@@ -36,10 +37,11 @@ SiTcpRbcp::read(unsigned int offsetAddress,
   header.id      = 0;
   header.length  = length;
   header.address = htonl(offsetAddress);
-
-  // std::cout << "#D SiTcpRbcP::read() address = " << std::hex << offsetAddress << std::dec
-  //           << " length = " << length << std::endl;
-
+  
+  if(m_verbose){
+   std::cout << "#D SiTcpRbcP::read() address = " << std::hex << offsetAddress << std::dec
+             << " length = " << length << std::endl;
+  }
   std::vector<unsigned char> packet(reinterpret_cast<unsigned char*>(&header),
                                     reinterpret_cast<unsigned char*>(&header)+sizeof(rbcp_header));
   // std::cout << "#D size = " << packet.size() << std::endl;
@@ -85,8 +87,10 @@ SiTcpRbcp::write(unsigned int offsetAddress,
   header.length  = length;
   header.address = htonl(offsetAddress);
 
-  // std::cout << "#D SiTcpRbcp::write() address = " << std::hex << offsetAddress << std::dec << std::endl;
-  // std::cout << "#D buf = " << std::hex << static_cast<unsigned int>(buffer[0]) << std::dec << std::endl;
+  if(m_verbose){
+    std::cout << "#D SiTcpRbcp::write() address = " << std::hex << offsetAddress << std::dec << std::endl;
+    std::cout << "#D buf = " << std::hex << static_cast<unsigned int>(buffer[0]) << std::dec << std::endl;
+  }
 
   std::vector<unsigned char> packet(reinterpret_cast<unsigned char*>(&header),
                                     reinterpret_cast<unsigned char*>(&header)+sizeof(rbcp_header));

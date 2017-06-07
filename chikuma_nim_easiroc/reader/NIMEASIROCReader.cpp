@@ -1,7 +1,8 @@
 // -*- C++ -*-
 /*!
  * @file NIMEASIROCReader.cpp
- * @brief
+ * @brief  This code is for NIM-EASICROC with Chikuma-san's firmware.
+ *         Ishijima-san's firmware is not compatible with this code.
  * @date   Jan. 20th, 2017
  * @author Hidemitsu Asano
  *
@@ -38,10 +39,14 @@ static const char* nimeasiroceader_spec[] =
     ""
 };
 
+
+
 NIMEASIROCReader::NIMEASIROCReader(RTC::Manager* manager)
     : DAQMW::DaqComponentBase(manager),
-      m_OutPort("nimeasiroceader_out", m_out_data),
-      m_sock(0),
+      m_OutPort("out0", m_out_data),
+      m_sock(NULL),
+      m_data(),
+      m_header(),
       m_recv_byte_size(0),
       m_out_status(BUF_SUCCESS),
       m_rbcp(NULL),
@@ -94,14 +99,25 @@ int NIMEASIROCReader::daq_configure()
     paramList = m_daq_service0.getCompParams();
     parse_params(paramList);
     
+    std::string rubycmd = "chikuma_nim_easiroc/reader/ruby1/Controller.rb" ; 
+    //int sysout1 = std::system("cd ruby1");
+    std::cout << std::endl;
+    std::cout << "Initializing NIM-EASIROC......... "  << std::endl;
+    std::cout << std::endl;
+    int sysout = std::system(rubycmd.c_str());
+    //int sysout = std::system("./Controller.rb");
+    std::cout << __FILE__  << " L." << __LINE__ << " system  " << sysout << std::endl;
+
     //register configuration via SiTCP RBCP
     if (!m_rbcp) {
+      std::cout << std::endl;
+      std::cout << "register Remote Bus Control Porotocol (RBCP) : port " << SiTcpRbcp::kDefaultPort << std::endl;
       m_rbcp = new SiTcpRbcp(m_srcAddr, SiTcpRbcp::kDefaultPort);
     }
 
     // 
     //MonitorMode();
-
+    
     return 0;
 }
 
@@ -146,12 +162,6 @@ int NIMEASIROCReader::parse_params(::NVList* list)
         fatal_error_report(USER_DEFINED_ERROR2, "NO SRC PORT");
     }
     
-    std::string rubycmd = "chikuma_nim_easiroc/reader/ruby1/Controller.rb" ; 
-    //int sysout1 = std::system("cd ruby1");
-    int sysout = std::system(rubycmd.c_str());
-    //int sysout = std::system("./Controller.rb");
-    std::cout << __FILE__  << "L. " << __LINE__ << " system  " << sysout << std::endl;
-
     return 0;
 }
 
@@ -164,10 +174,6 @@ int NIMEASIROCReader::daq_unconfigure()
 
 int NIMEASIROCReader::daq_start()
 {
-    std::cerr << "*** NIMEASIROCReader::start" << std::endl;
-
-    m_out_status = BUF_SUCCESS;
-
     try {
         // Create socket and connect to data server.
         m_sock = new DAQMW::Sock();
@@ -179,37 +185,53 @@ int NIMEASIROCReader::daq_start()
         std::cerr << "Sock Fatal Error : Unknown" << std::endl;
         fatal_error_report(USER_DEFINED_ERROR1, "SOCKET FATAL ERROR");
     }
-
+    m_sock->setOptRecvTimeOut(1);
     // Check data port connections
     bool outport_conn = check_dataPort_connections( m_OutPort );
     if (!outport_conn) {
         std::cerr << "### NO Connection" << std::endl;
         fatal_error_report(DATAPATH_DISCONNECTED);
     }
-    
+     
+    //readAndThrowPreviousData ?
+    size_t thrownSize=0;
+    int status = 0;
+    unsigned char rs[1]={0};
+    while(status != DAQMW::Sock::ERROR_TIMEOUT){
+      status = m_sock->read(rs,1);
+      thrownSize++;
+    }
+    std::cout << "ThrowPreviousDataSize: " << thrownSize << std::endl;
 
     //Go to DAQ mode from monitor mode
-    std::cerr << __FILE__ << "l. " << __LINE__ << " Enter DAQ mode"  << std::endl;
+    std::cerr << __FILE__ << " l." << __LINE__ << " Enter DAQ mode"  << std::endl;
     unsigned char data =0;
     //enable DAQ mode
-    data |= EASIROC::daqModeBit;
+    data |= NIMEASIROC::daqModeBit;
     if(m_isSendADC){
       //enable ADC info. 
-      data |= EASIROC::sendAdcBit;
+      data |= NIMEASIROC::sendAdcBit;
     }
     if(m_isSendTDC){
       //enable TDC info.
-      data |= EASIROC::sendTdcBit;
+      data |= NIMEASIROC::sendTdcBit;
     }
     if(m_isSendScaler){
       //enable scaler info.
       //should be disable 
-      data |= EASIROC::sendScalerBit;
+      data |= NIMEASIROC::sendScalerBit;
     }
     
-    if(m_debug) std::cout << __FILE__ << "l. " << __LINE__ << " write status register " <<  (int)data << std::endl;
+    if(m_debug){
+      std::cout << __FILE__ << " l." << __LINE__ << " write status register " <<  std::endl;
+      std::cout << "Address: " << NIMEASIROC::statusRegisterAddress  << " val.: " <<  (int)data << std::endl;
+    }
     int datalength = 1;//byte
-    m_rbcp->write(EASIROC::statusRegisterAddress,&data,datalength);
+    m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
+    std::cerr << "*** NIMEASIROCReader::start" << std::endl;
+
+    m_out_status = BUF_SUCCESS;
+
 
 
     return 0;
@@ -226,26 +248,29 @@ int NIMEASIROCReader::daq_stop()
     unsigned char data =0;
     if(m_isSendADC){
       //enable ADC info. 
-      data |= EASIROC::sendAdcBit;
+      data |= NIMEASIROC::sendAdcBit;
     }
     if(m_isSendTDC){
       //enable TDC info.
-      data |= EASIROC::sendTdcBit;
+      data |= NIMEASIROC::sendTdcBit;
     }
     if(m_isSendScaler){
       //enable scaler info.
       //should be disable 
-      data |= EASIROC::sendScalerBit;
+      data |= NIMEASIROC::sendScalerBit;
     }
     
-    if(m_debug) std::cout << __FILE__ << "l. " << __LINE__ << " write status register " << data << std::endl;
+    if(m_debug){
+      std::cout << __FILE__ << "l. " << __LINE__ << " write status register " <<  std::endl;
+      std::cout << "Address: " << NIMEASIROC::statusRegisterAddress  << "val. " <<  (int)data << std::endl;
+    }
     int datalength = 1;//byte
-    m_rbcp->write(EASIROC::statusRegisterAddress,&data,datalength);
+    m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
 
     if (m_sock) {
         m_sock->disconnect();
         delete m_sock;
-        m_sock = 0;
+        m_sock = NULL;
     }
     
     // Finalize EASIROC
@@ -272,21 +297,52 @@ int NIMEASIROCReader::daq_resume()
 int NIMEASIROCReader::read_data_from_detectors()
 {
     int received_data_size = 0;
+     
+    //How to read NIM-EASIROC data
+    //1. receive Header (always 4 bytes)
+    //2. get data size from header (changes event by event)
+    //3. receive Data
     
-    //TODO modify here
-    /// write your logic here
-    /// read 1024 byte data from data server
-    int status = m_sock->readAll(m_data, SEND_BUFFER_SIZE);
+    memset(m_header,0,sizeof(m_header));
+    
+    int status = m_sock->readAll(m_header,NIMEASIROC::headersize);
+
     if (status == DAQMW::Sock::ERROR_FATAL) {
-        std::cerr << "### ERROR: m_sock->readAll" << std::endl;
+        std::cerr << "### ERROR: m_sock->readAll() header" << std::endl;
         fatal_error_report(USER_DEFINED_ERROR1, "SOCKET FATAL ERROR");
     }
     else if (status == DAQMW::Sock::ERROR_TIMEOUT) {
-        std::cerr << "### Timeout: m_sock->readAll" << std::endl;
+        std::cerr << "### Timeout: m_sock->readAll() header" << std::endl;
         fatal_error_report(USER_DEFINED_ERROR2, "SOCKET TIMEOUT");
     }
     else {
-        received_data_size = SEND_BUFFER_SIZE;
+        received_data_size = NIMEASIROC::headersize;
+    }
+
+
+    //check header 
+    unsigned int normalFrame = 0x80000000;
+    unsigned int header32 = unpackBigEndian32(m_header);
+    unsigned int frame = header32 & 0x80808080;
+    if(frame != normalFrame){
+      std::cerr << __FILE__ << " L. " << __LINE__ << " Frame Error! " << std::endl;
+      return received_data_size;
+    }
+    
+    size_t dataSize = header32 & 0x0fff; 
+    m_data.resize(dataSize);
+
+    status = m_sock->readAll(&(m_data[0]), dataSize);
+    if (status == DAQMW::Sock::ERROR_FATAL) {
+        std::cerr << "### ERROR: m_sock->readAll() body" << std::endl;
+        fatal_error_report(USER_DEFINED_ERROR1, "SOCKET FATAL ERROR");
+    }
+    else if (status == DAQMW::Sock::ERROR_TIMEOUT) {
+        std::cerr << "### Timeout: m_sock->readAll() body" << std::endl;
+        fatal_error_report(USER_DEFINED_ERROR2, "SOCKET TIMEOUT");
+    }
+    else {
+        received_data_size += dataSize;
     }
 
     return received_data_size;
@@ -313,6 +369,9 @@ int NIMEASIROCReader::set_data(unsigned int data_byte_size)
 int NIMEASIROCReader::write_OutPort()
 {
     ////////////////// send data from OutPort  //////////////////
+    //memo by H.Asano
+    //The monitor module receives data from this OutPort.
+    //The name of this OutPort defined in config.xml  must be same as the name of inPort for monitorComp
     bool ret = m_OutPort.write();
 
     //////////////////// check write status /////////////////////
@@ -374,6 +433,48 @@ void NIMEASIROCReader::DaqMode()
   return;
 }
 
+unsigned int NIMEASIROCReader::unpackBigEndian32(const unsigned char* array4byte)
+{
+    if(sizeof(array4byte) !=4){
+      std::cerr << __FILE__ << "  " << __FUNCTION__  << " size of input is not 4 bytes! "<< std::endl;
+      return 0;
+    }
+
+    return ((array4byte[0] << 24) & 0xff000000) |
+           ((array4byte[1] << 16) & 0x00ff0000) |
+           ((array4byte[2] <<  8) & 0x0000ff00) |
+           ((array4byte[3] <<  0) & 0x000000ff);
+}
+
+
+bool NIMEASIROCReader::isAdcHg(unsigned int data)
+{
+  return (data & 0x00680000) == 0x00000000;
+}
+
+
+bool NIMEASIROCReader::isAdcLg(unsigned int data)
+{
+  return (data & 0x00680000) == 0x00080000;
+}
+
+
+bool NIMEASIROCReader::isTdcLeading(unsigned int data)
+{
+  return (data & 0x00601000) == 0x00201000;
+}
+
+
+bool NIMEASIROCReader::isTdcTrailing(unsigned int data)
+{
+  return (data & 0x00601000) == 0x00200000;
+}
+
+
+bool NIMEASIROCReader::isScaler(unsigned int data)
+{
+  return (data & 0x00600000) == 0x00400000;
+}
 
 
 extern "C"

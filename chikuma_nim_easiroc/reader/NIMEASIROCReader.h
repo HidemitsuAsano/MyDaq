@@ -14,7 +14,7 @@
 
 #include <daqmw/Sock.h>
 
-namespace EASIROC{
+namespace NIMEASIROC{
   const unsigned int directControlAddress = 0x00000000;
   const unsigned int slowControl1Address = 0x00000003;
   const unsigned int readRegister1Address = 0x0000003C;
@@ -32,11 +32,14 @@ namespace EASIROC{
   const unsigned int triggerValuesAddress = 0x00010100;
   const unsigned int versionAddress = 0xF0000000;
 
-
+  //RBCP
   const unsigned char daqModeBit = 0x01;
   const unsigned char sendAdcBit = 0x02;
   const unsigned char sendTdcBit = 0x04;
   const unsigned char sendScalerBit = 0x08;
+  
+  //
+  const int headersize = 4;//bytes
 }
 
 class SiTcpRbcp;
@@ -76,6 +79,14 @@ private:
     int read_data_from_detectors();
     int set_data(unsigned int data_byte_size);
     int write_OutPort();
+      
+    //utility function
+    unsigned int unpackBigEndian32(const unsigned char* array4byte);
+    bool isAdcHg(unsigned int data);
+    bool isAdcLg(unsigned int data);
+    bool isTdcLeading(unsigned int data);
+    bool isTdcTrailing(unsigned int data);
+    bool isScaler(unsigned int data);
 
     //nim easiroc specified function
     void DaqMode();
@@ -86,7 +97,9 @@ private:
 
     static const int EVENT_BYTE_SIZE  = 8;    // event byte size
     static const int SEND_BUFFER_SIZE = 1024; //
-    unsigned char m_data[SEND_BUFFER_SIZE];
+    //unsigned char m_data[SEND_BUFFER_SIZE];
+    std::vector <unsigned char> m_data;
+    unsigned char m_header[NIMEASIROC::headersize];
     unsigned int  m_recv_byte_size;
 
     BufferStatus m_out_status;

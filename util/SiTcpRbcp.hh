@@ -25,11 +25,11 @@ public:
   int write(unsigned int offsetAddress,
             unsigned char* buffer,
             int length);
-
+  void Verbosity(int val){m_verbose = val;} 
 private:
   DAQMW::Sock m_sock;
   rbcp_header m_header;
-  
+  int m_verbose;
 };
 
 #endif
