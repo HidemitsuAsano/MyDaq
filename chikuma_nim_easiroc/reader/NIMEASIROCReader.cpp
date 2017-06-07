@@ -7,6 +7,13 @@
  *
  */
 
+#include <cstdlib>
+#include <string>
+
+
+#include "SiTcpRbcp.hh"
+#include "getaddr.h"
+#include "HexDump.hh"
 #include "NIMEASIROCReader.h"
 
 using DAQMW::FatalType::DATAPATH_DISCONNECTED;
@@ -37,8 +44,12 @@ NIMEASIROCReader::NIMEASIROCReader(RTC::Manager* manager)
       m_sock(0),
       m_recv_byte_size(0),
       m_out_status(BUF_SUCCESS),
-
-      m_debug(false)
+      m_rbcp(NULL),
+      m_isSendADC(true),
+      m_isSendTDC(true),
+      m_isSendScaler(false),//DO NOT turn on
+      
+      m_debug(true)
 {
     // Registration: InPort/OutPort/Service
 
@@ -82,6 +93,14 @@ int NIMEASIROCReader::daq_configure()
     ::NVList* paramList;
     paramList = m_daq_service0.getCompParams();
     parse_params(paramList);
+    
+    //register configuration via SiTCP RBCP
+    if (!m_rbcp) {
+      m_rbcp = new SiTcpRbcp(m_srcAddr, SiTcpRbcp::kDefaultPort);
+    }
+
+    // 
+    //MonitorMode();
 
     return 0;
 }
@@ -117,6 +136,7 @@ int NIMEASIROCReader::parse_params(::NVList* list)
             m_srcPort = (int)strtol(svalue.c_str(), &offset, 10);
         }
     }
+
     if (!srcAddrSpecified) {
         std::cerr << "### ERROR:data source address not specified\n";
         fatal_error_report(USER_DEFINED_ERROR1, "NO SRC ADDRESS");
@@ -125,6 +145,12 @@ int NIMEASIROCReader::parse_params(::NVList* list)
         std::cerr << "### ERROR:data source port not specified\n";
         fatal_error_report(USER_DEFINED_ERROR2, "NO SRC PORT");
     }
+    
+    std::string rubycmd = "chikuma_nim_easiroc/reader/ruby1/Controller.rb" ; 
+    //int sysout1 = std::system("cd ruby1");
+    int sysout = std::system(rubycmd.c_str());
+    //int sysout = std::system("./Controller.rb");
+    std::cout << __FILE__  << "L. " << __LINE__ << " system  " << sysout << std::endl;
 
     return 0;
 }
@@ -160,6 +186,31 @@ int NIMEASIROCReader::daq_start()
         std::cerr << "### NO Connection" << std::endl;
         fatal_error_report(DATAPATH_DISCONNECTED);
     }
+    
+
+    //Go to DAQ mode from monitor mode
+    std::cerr << __FILE__ << "l. " << __LINE__ << " Enter DAQ mode"  << std::endl;
+    unsigned char data =0;
+    //enable DAQ mode
+    data |= EASIROC::daqModeBit;
+    if(m_isSendADC){
+      //enable ADC info. 
+      data |= EASIROC::sendAdcBit;
+    }
+    if(m_isSendTDC){
+      //enable TDC info.
+      data |= EASIROC::sendTdcBit;
+    }
+    if(m_isSendScaler){
+      //enable scaler info.
+      //should be disable 
+      data |= EASIROC::sendScalerBit;
+    }
+    
+    if(m_debug) std::cout << __FILE__ << "l. " << __LINE__ << " write status register " <<  (int)data << std::endl;
+    int datalength = 1;//byte
+    m_rbcp->write(EASIROC::statusRegisterAddress,&data,datalength);
+
 
     return 0;
 }
@@ -167,6 +218,29 @@ int NIMEASIROCReader::daq_start()
 int NIMEASIROCReader::daq_stop()
 {
     std::cerr << "*** NIMEASIROCReader::stop" << std::endl;
+    
+    //Go to monitor mode from DAQ mode
+    std::cerr << __FILE__ << "l. " << __LINE__ << "exit DAQ mode"  << std::endl;
+    
+    //disable daq mode
+    unsigned char data =0;
+    if(m_isSendADC){
+      //enable ADC info. 
+      data |= EASIROC::sendAdcBit;
+    }
+    if(m_isSendTDC){
+      //enable TDC info.
+      data |= EASIROC::sendTdcBit;
+    }
+    if(m_isSendScaler){
+      //enable scaler info.
+      //should be disable 
+      data |= EASIROC::sendScalerBit;
+    }
+    
+    if(m_debug) std::cout << __FILE__ << "l. " << __LINE__ << " write status register " << data << std::endl;
+    int datalength = 1;//byte
+    m_rbcp->write(EASIROC::statusRegisterAddress,&data,datalength);
 
     if (m_sock) {
         m_sock->disconnect();
@@ -287,6 +361,20 @@ int NIMEASIROCReader::daq_run()
 
     return 0;
 }
+
+void NIMEASIROCReader::MonitorMode()
+{
+
+  return;
+}
+
+void NIMEASIROCReader::DaqMode()
+{
+
+  return;
+}
+
+
 
 extern "C"
 {

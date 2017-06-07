@@ -3,12 +3,18 @@ COMP_NAME = NIMEASIROCReader
 LDADD = $(top_builddir)/src/libyaml.la
 all: $(COMP_NAME)Comp
 
+PWD = $(shell pwd)
+
 SRCS += $(COMP_NAME).cpp
 SRCS += $(COMP_NAME)Comp.cpp
 #SRCS += easirocdevice.o easiroc_config.o FileManager.o ParameterManager.o StringManager.o
 
+CPPFLAGS += -I../../util 
 # Socket library
-LDLIBS += -L$(DAQMW_LIB_DIR) -lSock
+LDLIBS += -L$(DAQMW_LIB_DIR) -lSock\
+	-L$(PWD)/../../util -lSiTcpRbcp -Wl,-rpath=$(PWD)/../../util# \
+#	-L$(PWD)/../../util -lgetaddr -Wl,-rpath=$(PWD)/../../util   \
+#	-L$(PWD)/../../util -lHexDump -Wl,-rpath=$(PWD)/../../util
 
 # sample install target
 #

@@ -26,8 +26,10 @@
                         <outPort>out0</outPort>
                     </outPorts>
                     <params>
-                        <param pid="srcAddr1">192.168.10.16</param>
+                        <param pid="srcAddr1">192.168.10.100</param>
+                        <!--<param pid="srcAddr1">127.0.0.1</param>-->
                         <param pid="srcPort1">24</param>
+                        <!--<param pid="srcPort1">2222</param>-->
                         <!--<param pid="srcAddr2">192.168.10.100</param>-->
                         <!--<param pid="srcPort2">24</param>-->
                     </params>
@@ -36,11 +38,11 @@
                     <hostAddr>127.0.0.1</hostAddr>
                     <hostPort>50000</hostPort>
                     <instName>NIMEASIROCMonitor0.rtc</instName>
-                    <execPath>/home/daq/MyDaq/NIMEASIROCMonitor/NIMEASIROCMonitorComp</execPath>
+                    <execPath>/home/daq/MyDaq/chikuma_nim_easiroc/monitor/NIMEASIROCMonitorComp</execPath>
                     <confFile>/tmp/daqmw/rtc.conf</confFile>
                     <startOrd>1</startOrd>
                     <inPorts>
-                        <inPort from="NIMEASIROCReader0:samplereader_out">samplemonitor_in</inPort>
+                        <inPort from="NIMEASIROCReader0:out0">NIMEASIROCmonitor_in</inPort>
                     </inPorts>
                     <outPorts>
                     </outPorts>
