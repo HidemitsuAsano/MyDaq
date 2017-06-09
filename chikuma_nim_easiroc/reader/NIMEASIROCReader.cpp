@@ -171,7 +171,8 @@ int NIMEASIROCReader::parse_params(::NVList* list)
 int NIMEASIROCReader::daq_unconfigure()
 {
     std::cerr << "*** NIMEASIROCReader::unconfigure" << std::endl;
-
+    //exit DAQ mode
+    MonitorMode();
     return 0;
 }
 
@@ -207,30 +208,8 @@ int NIMEASIROCReader::daq_start()
     std::cout << "ThrowPreviousDataSize: " << thrownSize << std::endl;
 
     //Go to DAQ mode from monitor mode
-    std::cerr << __FILE__ << " l." << __LINE__ << " Enter DAQ mode"  << std::endl;
-    unsigned char data =0;
-    //enable DAQ mode
-    data |= NIMEASIROC::daqModeBit;
-    if(m_isSendADC){
-      //enable ADC info. 
-      data |= NIMEASIROC::sendAdcBit;
-    }
-    if(m_isSendTDC){
-      //enable TDC info.
-      data |= NIMEASIROC::sendTdcBit;
-    }
-    if(m_isSendScaler){
-      //enable scaler info.
-      //should be disable 
-      data |= NIMEASIROC::sendScalerBit;
-    }
-    
-    if(m_debug){
-      std::cout << __FILE__ << " l." << __LINE__ << " write status register " <<  std::endl;
-      std::cout << "Address: " << std::hex << NIMEASIROC::statusRegisterAddress  << std::dec << " val.: " <<  (int)data << std::endl;
-    }
-    int datalength = 1;//byte
-    m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
+    DaqMode();
+
     std::cerr << "*** NIMEASIROCReader::start" << std::endl;
 
     m_out_status = BUF_SUCCESS;
@@ -248,27 +227,7 @@ int NIMEASIROCReader::daq_stop()
     std::cerr << __FILE__ << " L." << __LINE__ << "  exiting DAQ mode..."  << std::endl;
     
     //disable daq mode
-    unsigned char data =0;
-    if(m_isSendADC){
-      //enable ADC info. 
-      data |= NIMEASIROC::sendAdcBit;
-    }
-    if(m_isSendTDC){
-      //enable TDC info.
-      data |= NIMEASIROC::sendTdcBit;
-    }
-    if(m_isSendScaler){
-      //enable scaler info.
-      //should be disable 
-      data |= NIMEASIROC::sendScalerBit;
-    }
-    
-    if(m_debug){
-      std::cout << __FILE__ << " L." << __LINE__ << " write status register " <<  std::endl;
-      std::cout << "Address: " << std::hex <<  NIMEASIROC::statusRegisterAddress << std::dec << "val. " <<  (int)data << std::endl;
-    }
-    int datalength = 1;//byte
-    m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
+    MonitorMode();
 
     if (m_sock) {
         m_sock->disconnect();
@@ -277,7 +236,7 @@ int NIMEASIROCReader::daq_stop()
     }
     
     // Finalize EASIROC
-    // TODO : implement this function
+    // TODO : implement some function ?
     //finalize_device(); 
 
     return 0;
@@ -328,14 +287,16 @@ int NIMEASIROCReader::read_data_from_detectors()
     }
     //check header format and get data size
     unsigned int header32 = unpackBigEndian32(m_header);
-    unsigned int frame = header32 & 0x80808080;
+    
+    
+    //unsigned int frame = header32 & 0x80808080;
     //bool isHeader = ((header32 >> 27) & 0x01) == 0x01;
     ////if(!isHeader){
-    if(frame != NIMEASIROC::normalframe){
-      std::cerr << __FILE__ << " L." << __LINE__ << " Frame Error! " << std::endl;
-      std::cerr << "header32 " << std::hex << header32 << std::dec << std::endl;
-      return 0;
-    }
+    //if(frame != NIMEASIROC::normalframe){
+    //  std::cerr << __FILE__ << " L." << __LINE__ << " Frame Error! " << std::endl;
+    //  std::cerr << "header32 " << std::hex << header32 << std::dec << std::endl;
+    //  return 0;
+    //}
     
     /*
     //decoding header word
@@ -366,7 +327,10 @@ int NIMEASIROCReader::read_data_from_detectors()
     else {
         received_data_size += dataSize;
     }
-
+    //TODO implement later
+    /*
+    if(!datacheck(m_data)) return 0; 
+   */
 
     return received_data_size;
 }
@@ -448,12 +412,57 @@ int NIMEASIROCReader::daq_run()
 
 void NIMEASIROCReader::MonitorMode()
 {
+  unsigned char data =0;
+  if(m_isSendADC){
+    //enable ADC info. 
+    data |= NIMEASIROC::sendAdcBit;
+  }
+  if(m_isSendTDC){
+    //enable TDC info.
+    data |= NIMEASIROC::sendTdcBit;
+  }
+  if(m_isSendScaler){
+    //enable scaler info.
+    //should be disable 
+    data |= NIMEASIROC::sendScalerBit;
+  }
+
+  if(m_debug){
+    std::cout << __FILE__ << " L." << __LINE__ << " write status register " <<  std::endl;
+    std::cout << "Address: " << std::hex <<  NIMEASIROC::statusRegisterAddress << std::dec << "val. " <<  (int)data << std::endl;
+  }
+  int datalength = 1;//byte
+  m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
 
   return;
 }
 
 void NIMEASIROCReader::DaqMode()
 {
+  std::cerr << __FILE__ << " l." << __LINE__ << " Enter DAQ mode"  << std::endl;
+  unsigned char data =0;
+  //enable DAQ mode
+  data |= NIMEASIROC::daqModeBit;
+  if(m_isSendADC){
+    //enable ADC info. 
+    data |= NIMEASIROC::sendAdcBit;
+  }
+  if(m_isSendTDC){
+    //enable TDC info.
+    data |= NIMEASIROC::sendTdcBit;
+  }
+  if(m_isSendScaler){
+    //enable scaler info.
+    //should be disable 
+    data |= NIMEASIROC::sendScalerBit;
+  }
+
+  if(m_debug){
+    std::cout << __FILE__ << " l." << __LINE__ << " write status register " <<  std::endl;
+    std::cout << "Address: " << std::hex << NIMEASIROC::statusRegisterAddress  << std::dec << " val.: " <<  (int)data << std::endl;
+  }
+  int datalength = 1;//byte
+  m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
 
   return;
 }
@@ -502,11 +511,37 @@ bool NIMEASIROCReader::isScaler(unsigned int data)
 
 unsigned int NIMEASIROCReader::Decode32bitWord(unsigned int word32bit)
 {
+  //check data format
+  unsigned int frame = word32bit & 0x80808080;
+  if(frame != NIMEASIROC::normalframe){
+    std::cerr << __FILE__ << " L." << __LINE__ << " Frame Error! " << std::endl;
+    std::cerr << "32 bit word: " << std::hex << word32bit << std::dec << std::endl;
+    return 0;
+  }
+
   return ((word32bit & 0x7f000000) >> 3) | 
          ((word32bit & 0x007f0000) >> 2) |
          ((word32bit & 0x00007f00) >> 1) |
          ((word32bit & 0x0000007f) >> 0);
 }
+
+//under construction. DO NOT USE
+bool NIMEASIROCReader::datacheck(std::vector <unsigned char> data)
+{
+  size_t NWordData = data.size()/sizeof(int);
+  unsigned char dataoneblock[4];
+  for(unsigned int i=0;i<NWordData;i++){
+    dataoneblock[0] = data.at(i/4   );
+    dataoneblock[1] = data.at(i/4 + 1);
+    dataoneblock[2] = data.at(i/4 + 2);
+    dataoneblock[3] = data.at(i/4 + 3);
+    unsigned int data32 = unpackBigEndian32(dataoneblock);
+    unsigned int ret = Decode32bitWord(data32);
+    bool isOKword = (ret >> 27) ;
+  }
+  return true;
+}
+
 
 
 extern "C"

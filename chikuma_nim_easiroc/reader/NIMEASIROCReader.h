@@ -90,6 +90,7 @@ private:
     bool isTdcTrailing(unsigned int data);
     bool isScaler(unsigned int data);
     unsigned int Decode32bitWord(unsigned int word32bit);
+    bool datacheck(std::vector <unsigned char> data);
 
     //nim easiroc specified function
     void DaqMode();
