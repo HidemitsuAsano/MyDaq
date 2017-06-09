@@ -17,7 +17,7 @@
                     <hostAddr>127.0.0.1</hostAddr>
                     <hostPort>50000</hostPort>
                     <instName>SampleReader0.rtc</instName>
-                    <execPath>/home/daq/MyDaq/SampleReader/SampleReaderComp</execPath>
+                    <execPath>/home_local/highp/MyDaq/SampleReader/SampleReaderComp</execPath>
                     <confFile>/tmp/daqmw/rtc.conf</confFile>
                     <startOrd>2</startOrd>
                     <inPorts>
@@ -34,7 +34,7 @@
                     <hostAddr>127.0.0.1</hostAddr>
                     <hostPort>50000</hostPort>
                     <instName>SampleMonitor0.rtc</instName>
-                    <execPath>/home/daq/MyDaq/SampleMonitor/SampleMonitorComp</execPath>
+                    <execPath>/home_local/highp/MyDaq/SampleMonitor/SampleMonitorComp</execPath>
                     <confFile>/tmp/daqmw/rtc.conf</confFile>
                     <startOrd>1</startOrd>
                     <inPorts>

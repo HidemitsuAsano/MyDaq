@@ -13,3 +13,13 @@ Hidemitsu Asano
 
 # How to start DAQ
   ./start_daq.sh
+  or 
+  run.py -cl config.xml
+
+  if you want to run with webUI
+  run.py -l config.xml
+
+# How to check running component
+  pgrep -fl Comp
+
+

@@ -99,14 +99,18 @@ int NIMEASIROCReader::daq_configure()
     paramList = m_daq_service0.getCompParams();
     parse_params(paramList);
     
-    std::string rubycmd = "chikuma_nim_easiroc/reader/ruby1/Controller.rb" ; 
-    //int sysout1 = std::system("cd ruby1");
+    std::string rubydir = "chikuma_nim_easiroc/reader/ruby/Controller.rb";
+    std::string execmd  = rubydir + " " + m_srcAddr; 
+    //int sysout1 = std::system("cd ruby");
     std::cout << std::endl;
     std::cout << "Initializing NIM-EASIROC......... "  << std::endl;
     std::cout << std::endl;
-    int sysout = std::system(rubycmd.c_str());
+    int sysout = std::system(execmd.c_str());
     //int sysout = std::system("./Controller.rb");
-    std::cout << __FILE__  << " L." << __LINE__ << " system  " << sysout << std::endl;
+    std::cout << std::endl;
+    std::cout << __FILE__  << " L." << __LINE__ << " system command " <<  std::endl;
+    std::cout << execmd.c_str() << std::endl;
+    std::cout << std::endl;
 
     //register configuration via SiTCP RBCP
     if (!m_rbcp) {
@@ -320,7 +324,7 @@ int NIMEASIROCReader::read_data_from_detectors()
     }
 
 
-    //check header 
+    //check header fomat and get data size
     unsigned int normalFrame = 0x80000000;
     unsigned int header32 = unpackBigEndian32(m_header);
     unsigned int frame = header32 & 0x80808080;
@@ -348,6 +352,7 @@ int NIMEASIROCReader::read_data_from_detectors()
     return received_data_size;
 }
 
+//set data going to monitorComp
 int NIMEASIROCReader::set_data(unsigned int data_byte_size)
 {
     unsigned char header[8];

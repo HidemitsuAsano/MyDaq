@@ -17,7 +17,7 @@
                     <hostAddr>127.0.0.1</hostAddr>
                     <hostPort>50000</hostPort>
                     <instName>NIMEASIROCReader0.rtc</instName>
-                    <execPath>/home/daq/MyDaq/chikuma_nim_easiroc/reader/NIMEASIROCReaderComp</execPath>
+                    <execPath>/home_local/highp/MyDaq/chikuma_nim_easiroc/reader/NIMEASIROCReaderComp</execPath>
                     <confFile>/tmp/daqmw/rtc.conf</confFile>
                     <startOrd>2</startOrd>
                     <inPorts>
@@ -38,7 +38,7 @@
                     <hostAddr>127.0.0.1</hostAddr>
                     <hostPort>50000</hostPort>
                     <instName>NIMEASIROCMonitor0.rtc</instName>
-                    <execPath>/home/daq/MyDaq/chikuma_nim_easiroc/monitor/NIMEASIROCMonitorComp</execPath>
+                    <execPath>/home_local/highp/MyDaq/chikuma_nim_easiroc/monitor/NIMEASIROCMonitorComp</execPath>
                     <confFile>/tmp/daqmw/rtc.conf</confFile>
                     <startOrd>1</startOrd>
                     <inPorts>
