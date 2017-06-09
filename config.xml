@@ -26,7 +26,8 @@
                         <outPort>out0</outPort>
                     </outPorts>
                     <params>
-                        <param pid="srcAddr1">192.168.10.100</param>
+                        <!--<param pid="srcAddr1">192.168.10.100</param>-->
+                        <param pid="srcAddr1">192.168.10.16</param>
                         <!--<param pid="srcAddr1">127.0.0.1</param>-->
                         <param pid="srcPort1">24</param>
                         <!--<param pid="srcPort1">2222</param>-->

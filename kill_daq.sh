@@ -1,5 +1,5 @@
 #!/bin/bash
-
+kill %%
 pgrep -fl Comp
 killall -KILL DaqOperatorComp
 killall -KILL NIMEASIROCReaderComp

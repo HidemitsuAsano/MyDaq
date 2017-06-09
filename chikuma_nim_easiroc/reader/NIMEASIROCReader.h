@@ -40,6 +40,8 @@ namespace NIMEASIROC{
   
   //
   const int headersize = 4;//bytes
+  const unsigned int normalframe     = 0x80000000;
+  const unsigned int headercheckmask = 0x80808080;
 }
 
 class SiTcpRbcp;
@@ -87,6 +89,7 @@ private:
     bool isTdcLeading(unsigned int data);
     bool isTdcTrailing(unsigned int data);
     bool isScaler(unsigned int data);
+    unsigned int Decode32bitWord(unsigned int word32bit);
 
     //nim easiroc specified function
     void DaqMode();

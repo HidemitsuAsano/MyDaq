@@ -105,10 +105,11 @@ int NIMEASIROCReader::daq_configure()
     std::cout << std::endl;
     std::cout << "Initializing NIM-EASIROC......... "  << std::endl;
     std::cout << std::endl;
+    
     int sysout = std::system(execmd.c_str());
-    //int sysout = std::system("./Controller.rb");
+    
     std::cout << std::endl;
-    std::cout << __FILE__  << " L." << __LINE__ << " system command " <<  std::endl;
+    std::cout << __FILE__  << " L." << __LINE__ << " system command executed. " << sysout << std::endl;
     std::cout << execmd.c_str() << std::endl;
     std::cout << std::endl;
 
@@ -119,8 +120,6 @@ int NIMEASIROCReader::daq_configure()
       m_rbcp = new SiTcpRbcp(m_srcAddr, SiTcpRbcp::kDefaultPort);
     }
 
-    // 
-    //MonitorMode();
     
     return 0;
 }
@@ -228,7 +227,7 @@ int NIMEASIROCReader::daq_start()
     
     if(m_debug){
       std::cout << __FILE__ << " l." << __LINE__ << " write status register " <<  std::endl;
-      std::cout << "Address: " << NIMEASIROC::statusRegisterAddress  << " val.: " <<  (int)data << std::endl;
+      std::cout << "Address: " << std::hex << NIMEASIROC::statusRegisterAddress  << std::dec << " val.: " <<  (int)data << std::endl;
     }
     int datalength = 1;//byte
     m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
@@ -246,7 +245,7 @@ int NIMEASIROCReader::daq_stop()
     std::cerr << "*** NIMEASIROCReader::stop" << std::endl;
     
     //Go to monitor mode from DAQ mode
-    std::cerr << __FILE__ << "l. " << __LINE__ << "exit DAQ mode"  << std::endl;
+    std::cerr << __FILE__ << " L." << __LINE__ << "  exiting DAQ mode..."  << std::endl;
     
     //disable daq mode
     unsigned char data =0;
@@ -265,8 +264,8 @@ int NIMEASIROCReader::daq_stop()
     }
     
     if(m_debug){
-      std::cout << __FILE__ << "l. " << __LINE__ << " write status register " <<  std::endl;
-      std::cout << "Address: " << NIMEASIROC::statusRegisterAddress  << "val. " <<  (int)data << std::endl;
+      std::cout << __FILE__ << " L." << __LINE__ << " write status register " <<  std::endl;
+      std::cout << "Address: " << std::hex <<  NIMEASIROC::statusRegisterAddress << std::dec << "val. " <<  (int)data << std::endl;
     }
     int datalength = 1;//byte
     m_rbcp->write(NIMEASIROC::statusRegisterAddress,&data,datalength);
@@ -323,17 +322,36 @@ int NIMEASIROCReader::read_data_from_detectors()
         received_data_size = NIMEASIROC::headersize;
     }
 
-
-    //check header fomat and get data size
-    unsigned int normalFrame = 0x80000000;
+    
+    if(m_debug){
+      std::cout << __FILE__ << " L. " << __LINE__ << " size of header" << sizeof(m_header) << std::endl;
+    }
+    //check header format and get data size
     unsigned int header32 = unpackBigEndian32(m_header);
     unsigned int frame = header32 & 0x80808080;
-    if(frame != normalFrame){
-      std::cerr << __FILE__ << " L. " << __LINE__ << " Frame Error! " << std::endl;
-      return received_data_size;
+    //bool isHeader = ((header32 >> 27) & 0x01) == 0x01;
+    ////if(!isHeader){
+    if(frame != NIMEASIROC::normalframe){
+      std::cerr << __FILE__ << " L." << __LINE__ << " Frame Error! " << std::endl;
+      std::cerr << "header32 " << std::hex << header32 << std::dec << std::endl;
+      return 0;
     }
     
-    size_t dataSize = header32 & 0x0fff; 
+    /*
+    //decoding header word
+    unsigned int ret = ((header32 & 0x7f000000) >> 3) | 
+                       ((header32 & 0x007f0000) >> 2) |
+                       ((header32 & 0x00007f00) >> 1) |
+                       ((header32 & 0x0000007f) >> 0);
+    */
+
+    //get the number of words
+    unsigned int ret = Decode32bitWord(header32);
+    size_t NWordData = ret & 0x0fff; 
+    if(m_debug){
+      std::cout << __FILE__ << " L. " << __LINE__ << "data size " << NWordData << std::endl;
+    }
+    unsigned int dataSize = NWordData * sizeof(int);
     m_data.resize(dataSize);
 
     status = m_sock->readAll(&(m_data[0]), dataSize);
@@ -348,6 +366,7 @@ int NIMEASIROCReader::read_data_from_detectors()
     else {
         received_data_size += dataSize;
     }
+
 
     return received_data_size;
 }
@@ -421,6 +440,7 @@ int NIMEASIROCReader::daq_run()
     else {    // OutPort write successfully done
         inc_sequence_num();                     // increase sequence num.
         inc_total_data_size(m_recv_byte_size);  // increase total data byte size
+        m_data.clear();
     }
 
     return 0;
@@ -438,18 +458,16 @@ void NIMEASIROCReader::DaqMode()
   return;
 }
 
+//convert 4 char arrays to a single 32 bit word
 unsigned int NIMEASIROCReader::unpackBigEndian32(const unsigned char* array4byte)
 {
-    if(sizeof(array4byte) !=4){
-      std::cerr << __FILE__ << "  " << __FUNCTION__  << " size of input is not 4 bytes! "<< std::endl;
-      return 0;
-    }
 
     return ((array4byte[0] << 24) & 0xff000000) |
            ((array4byte[1] << 16) & 0x00ff0000) |
            ((array4byte[2] <<  8) & 0x0000ff00) |
            ((array4byte[3] <<  0) & 0x000000ff);
 }
+
 
 
 bool NIMEASIROCReader::isAdcHg(unsigned int data)
@@ -479,6 +497,15 @@ bool NIMEASIROCReader::isTdcTrailing(unsigned int data)
 bool NIMEASIROCReader::isScaler(unsigned int data)
 {
   return (data & 0x00600000) == 0x00400000;
+}
+
+
+unsigned int NIMEASIROCReader::Decode32bitWord(unsigned int word32bit)
+{
+  return ((word32bit & 0x7f000000) >> 3) | 
+         ((word32bit & 0x007f0000) >> 2) |
+         ((word32bit & 0x00007f00) >> 1) |
+         ((word32bit & 0x0000007f) >> 0);
 }
 
 
