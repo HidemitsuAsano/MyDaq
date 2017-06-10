@@ -6,8 +6,13 @@
  * @author Hidemitsu Asano
  *
  */
-#include <ctime>
 #include "NIMEASIROCMonitor.h"
+
+#include <ctime>
+#include <string>
+#include <iomanip>
+#include <sstream>
+#include <fstream>
 
 using DAQMW::FatalType::DATAPATH_DISCONNECTED;
 using DAQMW::FatalType::INPORT_ERROR;
@@ -48,6 +53,8 @@ NIMEASIROCMonitor::NIMEASIROCMonitor(RTC::Manager* manager)
       m_readoutch(64),// 64 * 1 modules
       m_isSaveFile(true),
       m_isSaveTree(true),
+      m_tfile(NULL),
+      m_tree(NULL),
       m_debug(false)
 {
     // Registration: InPort/OutPort/Service
@@ -181,6 +188,15 @@ int NIMEASIROCMonitor::daq_start()
     */
 
     gStyle->SetOptStat("em");
+    if(m_isSaveFile){
+      std::ostringstream filename;
+      time_t now = time(NULL);
+      struct tm *pnow = localtime(&now);
+      filename << "root/" << pnow->tm_year+1900 << pnow->tm_mon+1 << pnow->tm_mday;
+      int runnumber = get_run_number();
+      filename << "_run" << runnumber <<".root";
+      m_tfile = new TFile(filename.str().c_str(),"NEW");
+    }
 
     int nbin = 4096;
     for(int i =0; i<m_readoutch; i++){
@@ -197,6 +213,11 @@ int NIMEASIROCMonitor::daq_start()
           Form("TDC trailing %d", i),
           nbin, 0, 4096);
     }
+    if(m_isSaveTree){
+      m_tree = new TTree("evttree","evttree");
+      //m_tree->Branch("evtnum",
+    }
+
 
 
     return 0;
@@ -210,6 +231,9 @@ int NIMEASIROCMonitor::daq_stop()
     m_canvas->Update();
 
     reset_InPort();
+
+    m_tfile->Write();
+    m_tfile->Close();
 
     return 0;
 }

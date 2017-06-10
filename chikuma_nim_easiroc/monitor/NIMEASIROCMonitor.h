@@ -121,11 +121,18 @@ private:
     TH2I* m_2DcorrelationV[4];
     //not used so far. (June. 9th, 2017)
     //TH1F* m_scaler[67*2];
-    TFile* rootfile; 
-    TTree* tree;
     bool m_isSaveFile;  
     bool m_isSaveTree;  
-
+    TFile* m_tfile; 
+    TTree* m_tree;
+    //data 
+    /*
+    int m_evtnum;
+    int m_dataadcHigh[128];
+    int m_dataadcLow[128];
+    int m_datatdcLeading[128];
+    int m_datatdcTrailing[128];
+    */
     bool m_debug;
 };
 
