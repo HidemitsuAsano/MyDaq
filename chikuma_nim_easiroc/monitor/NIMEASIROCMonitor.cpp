@@ -6,7 +6,7 @@
  * @author Hidemitsu Asano
  *
  */
-
+#include <ctime>
 #include "NIMEASIROCMonitor.h"
 
 using DAQMW::FatalType::DATAPATH_DISCONNECTED;
@@ -43,6 +43,11 @@ NIMEASIROCMonitor::NIMEASIROCMonitor(RTC::Manager* manager)
       m_max(0),
       m_monitor_update_rate(30),
       m_event_byte_size(0),
+      m_Nmodule(2),
+      //m_readoutch(128),// 64 * 2 modules
+      m_readoutch(64),// 64 * 1 modules
+      m_isSaveFile(true),
+      m_isSaveTree(true),
       m_debug(false)
 {
     // Registration: InPort/OutPort/Service
@@ -53,6 +58,7 @@ NIMEASIROCMonitor::NIMEASIROCMonitor(RTC::Manager* manager)
     init_command_port();
     init_state_table();
     set_comp_name("NIMEASIROCMONITOR");
+
 }
 
 NIMEASIROCMonitor::~NIMEASIROCMonitor()
@@ -148,14 +154,15 @@ int NIMEASIROCMonitor::daq_start()
     //////////////// CANVAS FOR HISTOS ///////////////////
     if (m_canvas) {
         delete m_canvas;
-        m_canvas = 0;
+        m_canvas = NULL;
     }
     m_canvas = new TCanvas("c1", "histos", 0, 0, 600, 400);
-
+    m_canvas->Divide(2,1);
+    /*
     ////////////////       HISTOS      ///////////////////
     if (m_hist) {
         delete m_hist;
-        m_hist = 0;
+        m_hist = NULL;
     }
 
     int m_hist_bin = 100;
@@ -171,6 +178,26 @@ int NIMEASIROCMonitor::daq_start()
     m_hist->GetYaxis()->SetNdivisions(4);
     m_hist->GetXaxis()->SetLabelSize(0.07);
     m_hist->GetYaxis()->SetLabelSize(0.06);
+    */
+
+    gStyle->SetOptStat("em");
+
+    int nbin = 4096;
+    for(int i =0; i<m_readoutch; i++){
+      m_adcHigh[i] = new TH1I(Form("ADC_HIGH_%d", i),
+          Form("ADC high gain %d", i),
+          nbin, 0, 4096);
+      m_adcLow[i] = new TH1I(Form("ADC_LOW_%d", i),
+          Form("ADC low gain %d", i),
+          nbin, 0, 4096);
+      m_tdcLeading[i] = new TH1I(Form("TDC_LEADING_%d", i),
+          Form("TDC leading %d", i),
+          nbin, 0, 4096);
+      m_tdcTrailing[i] = new TH1I(Form("TDC_TRAILING_%d", i),
+          Form("TDC trailing %d", i),
+          nbin, 0, 4096);
+    }
+
 
     return 0;
 }
@@ -179,7 +206,7 @@ int NIMEASIROCMonitor::daq_stop()
 {
     std::cerr << "*** NIMEASIROCMonitor::stop" << std::endl;
 
-    m_hist->Draw();
+    //m_hist->Draw();
     m_canvas->Update();
 
     reset_InPort();
@@ -211,8 +238,44 @@ int NIMEASIROCMonitor::reset_InPort()
     return 0;
 }
 
-int NIMEASIROCMonitor::decode_data(const unsigned char* mydata)
-{
+unsigned int NIMEASIROCMonitor::decode_data(const unsigned char* mydata)
+{  
+    //unsigned int netdata    = *(unsigned int*)&mydata[0];
+    //m_NIMEASIROCData1.data = ntohl(netdata);
+    unsigned char oneeventdata[4]={mydata[0],mydata[1],mydata[2],mydata[3]};
+    unsigned int data32 = unpackBigEndian32(oneeventdata);
+    unsigned int ret = Decode32bitWord(data32);
+    /*
+    if(isAdcHg(data32)){
+      int ch = (data32 >> 13) & 0x3f;
+      bool otr = ((data32 >> 12) & 0x01) != 0;
+      int value = data32 & 0x0fff;
+      if(!otr) {
+        m_NIMEASIROCData1.Adchigh = value;
+      }
+    }else if(isAdcLg(data32)) {
+      int ch = (data32 >> 13) & 0x3f;
+      bool otr = ((data32 >> 12) & 0x01) != 0;
+      int value = data32 & 0x0fff;
+      if(!otr) {
+        m_NIMEASIROCData1.Adclow = value;
+      }
+    }else if(isTdcLeading(data32)) {
+      int ch = (data32 >> 13) & 0x3f;
+      int value = data32 & 0x0fff;
+      m_NIMEASIROCData1.TdcLeading = value;
+    }else if(isTdcTrailing(data32)) {
+      int ch = (data32 >> 13) & 0x3f;
+      int value = data32 & 0x0fff;
+      m_NIMEASIROCData1.TdcTrailing = value;
+    //scaler info is not used so far
+    }else if(isScaler(data32)) {
+      int ch = (data32 >> 14) & 0x7f;
+      int value = data32 & 0x3fff;
+      m_NIMEASIROCData1.Scaler = value;
+    }*/
+
+    /*
     m_NIMEASIROCData.magic      = mydata[0];
     m_NIMEASIROCData.format_ver = mydata[1];
     m_NIMEASIROCData.module_num = mydata[2];
@@ -227,18 +290,97 @@ int NIMEASIROCMonitor::decode_data(const unsigned char* mydata)
         std::cerr << "reserved: "   << std::hex << (int)m_NIMEASIROCData.reserved   << std::endl;
         std::cerr << "data: "       << std::dec << (int)m_NIMEASIROCData.data       << std::endl;
     }
+    */
 
-    return 0;
+    return ret;
 }
 
-int NIMEASIROCMonitor::fill_data(const unsigned char* mydata, const int size)
+unsigned int NIMEASIROCMonitor::decode_header(const unsigned char* mydata)
 {
-    for (int i = 0; i < size/(int)ONE_EVENT_SIZE; i++) {
-        decode_data(mydata);
-        float fdata = m_NIMEASIROCData.data/1000.0; // 1000 times value is received
-        m_hist->Fill(fdata);
+    unsigned char header[NIMEASIROC::headersize];
+    for(int i=0; i<NIMEASIROC::headersize; i++){
+        header[i] = mydata[i];
+    }
+    unsigned int header32 = unpackBigEndian32(header);
+    unsigned int ret = Decode32bitWord(header32);
 
-        mydata+=ONE_EVENT_SIZE;
+    return ret;
+}
+
+
+//fill data
+int NIMEASIROCMonitor::fill_data(const unsigned char* mydata, const int size)
+{  
+    //H.Asano memo
+    //ONE_EVENT_SIZE (=4bytes) ,defined in NIMEASIROCData.h
+    //the unit of "size" is byte 
+    /*
+    for (int i = 0; i < size/(int)ONE_EVENT_SIZE; i++) {
+      decode_data(mydata);
+      float fdata = m_NIMEASIROCData.data/1000.0; // 1000 times value is received
+      m_hist->Fill(fdata);
+      mydata+=ONE_EVENT_SIZE;
+    }*/
+
+    unsigned int events = 0;
+    m_NIMEASIROCData1.header = decode_header(mydata);
+    
+    if(m_debug){
+      std::cout << __FUNCTION__ << " size from header " << 4*(m_NIMEASIROCData1.header & 0x0fff) << std::endl;  
+      std::cout << __FUNCTION__ << " size " << size << std::endl;
+      std::cout << __FUNCTION__ << " # of word " << size/(int)ONE_EVENT_SIZE << std::endl;
+    }
+    for (int i = 0; i < (size/(int)ONE_EVENT_SIZE)-1; i++ ) {
+      unsigned int onedata = decode_data(mydata+NIMEASIROC::headersize);//add offset of header
+      
+      if(isAdcHg(onedata)){
+        int ch = (onedata >> 13) & 0x3f;
+        bool otr = ((onedata >> 12) & 0x01) != 0;
+        int value = onedata & 0x0fff;
+        if(!otr) {
+          m_adcHigh[ch]->Fill(value);
+        }
+      }else if(isAdcLg(onedata)) {
+        int ch = (onedata >> 13) & 0x3f;
+        bool otr = ((onedata >> 12) & 0x01) != 0;
+        int value = onedata & 0x0fff;
+        if(!otr) {
+          m_adcLow[ch]->Fill(value);
+        }
+      }else if(isTdcLeading(onedata)) {
+        int ch = (onedata >> 13) & 0x3f;
+        int value = onedata & 0x0fff;
+        m_tdcLeading[ch]->Fill(value);
+      }else if(isTdcTrailing(onedata)) {
+        int ch = (onedata >> 13) & 0x3f;
+        int value = onedata & 0x0fff;
+        m_tdcTrailing[ch]->Fill(value);
+        //scaler info is not used so far
+      }/*else if(isScaler(data32)) {
+         int ch = (data32 >> 14) & 0x7f;
+         int value = data32 & 0x3fff;
+         m_NIMEASIROCData1.Scaler = value;
+         }*/
+
+      /*
+         m_NIMEASIROCData.magic      = mydata[0];
+         m_NIMEASIROCData.format_ver = mydata[1];
+         m_NIMEASIROCData.module_num = mydata[2];
+         m_NIMEASIROCData.reserved   = mydata[3];
+         unsigned int netdata    = *(unsigned int*)&mydata[4];
+         m_NIMEASIROCData.data       = ntohl(netdata);
+
+         if (m_debug) {
+         std::cerr << "magic: "      << std::hex << (int)m_NIMEASIROCData.magic      << std::endl;
+         std::cerr << "format_ver: " << std::hex << (int)m_NIMEASIROCData.format_ver << std::endl;
+         std::cerr << "module_num: " << std::hex << (int)m_NIMEASIROCData.module_num << std::endl;
+         std::cerr << "reserved: "   << std::hex << (int)m_NIMEASIROCData.reserved   << std::endl;
+         std::cerr << "data: "       << std::dec << (int)m_NIMEASIROCData.data       << std::endl;
+         }
+      */
+
+      events++;
+      mydata+=ONE_EVENT_SIZE;
     }
     return 0;
 }
@@ -273,21 +415,28 @@ unsigned int NIMEASIROCMonitor::read_InPort()
     return recv_byte_size;
 }
 
+//run event by event ? unless BestEfforDispacher is running ?
 int NIMEASIROCMonitor::daq_run()
 {
     if (m_debug) {
         std::cerr << "*** NIMEASIROCMonitor::run" << std::endl;
     }
 
+    m_recv_data.clear();
     unsigned int recv_byte_size = read_InPort();
     if (recv_byte_size == 0) { // Timeout
         return 0;
     }
 
-    check_header_footer(m_in_data, recv_byte_size); // check header and footer
+    //check_header_footer(m_in_data, recv_byte_size); // check header and footer
     m_event_byte_size = get_event_size(recv_byte_size);
 
     /////////////  Write component main logic here. /////////////
+    //H. Asano memo
+    //HEADER_BYTE_SIZE is actually 8 bytes, defined in /user/include/DaqComponentBase.h
+    //after the header defined by DAQMW, the data sent by readerComp will be started.
+    //The data is copied to the m_recv_data
+    m_recv_data.resize(m_event_byte_size);
     memcpy(&m_recv_data[0], &m_in_data.data[HEADER_BYTE_SIZE], m_event_byte_size);
 
     fill_data(&m_recv_data[0], m_event_byte_size);
@@ -297,8 +446,16 @@ int NIMEASIROCMonitor::daq_run()
     }
 
     unsigned long sequence_num = get_sequence_num();
+    if (m_debug) {
+        std::cerr << "*** NIMEASIROCMonitor::sequence # " << sequence_num << std::endl;
+    }
+  
     if ((sequence_num % m_monitor_update_rate) == 0) {
-        m_hist->Draw();
+        //m_hist->Draw();
+        m_canvas->cd(1);
+        m_adcHigh[0]->Draw();
+        m_canvas->cd(2);
+        m_adcHigh[1]->Draw();
         m_canvas->Update();
     }
     /////////////////////////////////////////////////////////////
@@ -307,6 +464,92 @@ int NIMEASIROCMonitor::daq_run()
 
     return 0;
 }
+
+
+//convert 4 char arrays to a single 32 bit word
+unsigned int NIMEASIROCMonitor::unpackBigEndian32(const unsigned char* array4byte)
+{
+
+    return ((array4byte[0] << 24) & 0xff000000) |
+           ((array4byte[1] << 16) & 0x00ff0000) |
+           ((array4byte[2] <<  8) & 0x0000ff00) |
+           ((array4byte[3] <<  0) & 0x000000ff);
+}
+
+
+
+bool NIMEASIROCMonitor::isAdcHg(unsigned int data)
+{
+  return (data & 0x00680000) == 0x00000000;
+}
+
+
+bool NIMEASIROCMonitor::isAdcLg(unsigned int data)
+{
+  return (data & 0x00680000) == 0x00080000;
+}
+
+
+bool NIMEASIROCMonitor::isTdcLeading(unsigned int data)
+{
+  return (data & 0x00601000) == 0x00201000;
+}
+
+
+bool NIMEASIROCMonitor::isTdcTrailing(unsigned int data)
+{
+  return (data & 0x00601000) == 0x00200000;
+}
+
+
+bool NIMEASIROCMonitor::isScaler(unsigned int data)
+{
+  return (data & 0x00600000) == 0x00400000;
+}
+
+
+unsigned int NIMEASIROCMonitor::Decode32bitWord(unsigned int word32bit)
+{
+  //check data format
+  unsigned int frame = word32bit & 0x80808080;
+  if(frame != NIMEASIROC::normalframe){
+    std::cerr << __FILE__ << " L." << __LINE__ << " Frame Error! " << std::endl;
+    std::cerr << "32 bit word: " << std::hex << word32bit << std::dec << std::endl;
+    return 0;
+  }
+
+  return ((word32bit & 0x7f000000) >> 3) | 
+         ((word32bit & 0x007f0000) >> 2) |
+         ((word32bit & 0x00007f00) >> 1) |
+         ((word32bit & 0x0000007f) >> 0);
+}
+
+
+void NIMEASIROCMonitor::clearhists()
+{
+  for(int i = 0; i < 128; i++){
+    delete m_adcHigh[i];    
+    delete m_adcLow[i];     
+    delete m_tdcLeading[i]; 
+    delete m_tdcTrailing[i];
+
+    m_adcHigh[i]=NULL;    
+    m_adcLow[i]=NULL;     
+    m_tdcLeading[i]=NULL; 
+    m_tdcTrailing[i]=NULL;
+  }
+  for(int i = 0;i < 4; i++){
+    delete m_2DcorrelationX[i];
+    delete m_2DcorrelationU[i];
+    delete m_2DcorrelationV[i];
+    m_2DcorrelationX[i]=NULL;
+    m_2DcorrelationU[i]=NULL; 
+    m_2DcorrelationV[i]=NULL;
+  }
+
+}
+
+
 
 extern "C"
 {

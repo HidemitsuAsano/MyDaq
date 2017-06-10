@@ -45,8 +45,8 @@ NIMEASIROCReader::NIMEASIROCReader(RTC::Manager* manager)
     : DAQMW::DaqComponentBase(manager),
       m_OutPort("out0", m_out_data),
       m_sock(NULL),
-      m_data(),
       m_header(),
+      m_data(),
       m_recv_byte_size(0),
       m_out_status(BUF_SUCCESS),
       m_rbcp(NULL),
@@ -54,7 +54,7 @@ NIMEASIROCReader::NIMEASIROCReader(RTC::Manager* manager)
       m_isSendTDC(true),
       m_isSendScaler(false),//DO NOT turn on
       
-      m_debug(true)
+      m_debug(false)
 {
     // Registration: InPort/OutPort/Service
 
@@ -173,6 +173,7 @@ int NIMEASIROCReader::daq_unconfigure()
     std::cerr << "*** NIMEASIROCReader::unconfigure" << std::endl;
     //exit DAQ mode
     MonitorMode();
+    delete m_rbcp;
     return 0;
 }
 
@@ -197,7 +198,8 @@ int NIMEASIROCReader::daq_start()
         fatal_error_report(DATAPATH_DISCONNECTED);
     }
      
-    //readAndThrowPreviousData ?
+    //read And Throw PreviousData 
+    //clear FIFO before entering DAQ mode
     size_t thrownSize=0;
     int status = 0;
     unsigned char rs[1]={0};
@@ -234,6 +236,9 @@ int NIMEASIROCReader::daq_stop()
         delete m_sock;
         m_sock = NULL;
     }
+    
+    memset(m_header,0,sizeof(m_header));
+    m_data.clear();
     
     // Finalize EASIROC
     // TODO : implement some function ?
@@ -283,7 +288,7 @@ int NIMEASIROCReader::read_data_from_detectors()
 
     
     if(m_debug){
-      std::cout << __FILE__ << " L. " << __LINE__ << " size of header" << sizeof(m_header) << std::endl;
+      std::cout << __FILE__ << " L. " << __LINE__ << " size of header " << sizeof(m_header) << std::endl;
     }
     //check header format and get data size
     unsigned int header32 = unpackBigEndian32(m_header);
@@ -310,12 +315,22 @@ int NIMEASIROCReader::read_data_from_detectors()
     unsigned int ret = Decode32bitWord(header32);
     size_t NWordData = ret & 0x0fff; 
     if(m_debug){
-      std::cout << __FILE__ << " L. " << __LINE__ << "data size " << NWordData << std::endl;
+      std::cout << __FILE__ << " L." << __LINE__ << " data size " << NWordData << std::endl;
     }
-    unsigned int dataSize = NWordData * sizeof(int);
-    m_data.resize(dataSize);
+    unsigned int dataSize = NWordData * sizeof(int);// bytes
+    //if(!m_data.empty(){
+    //  std::cerr << __FILE__ << " L." << __LINE__ << "m_data is not empty !!" << std::endl;
+    //}
+    std::cout << __FILE__ << " L." << __LINE__ << " body data size " << dataSize << std::endl;
 
-    status = m_sock->readAll(&(m_data[0]), dataSize);
+    m_data.clear();
+    m_data.resize(NIMEASIROC::headersize + dataSize);
+    //std::copy(m_header.begin(),m_header.end(),back_inserter(m_data));
+    for(int idata = 0; idata < NIMEASIROC::headersize; idata++){
+      m_data.at(idata) = m_header[idata];
+    }
+
+    status = m_sock->readAll(&(m_data[NIMEASIROC::headersize]), dataSize);
     if (status == DAQMW::Sock::ERROR_FATAL) {
         std::cerr << "### ERROR: m_sock->readAll() body" << std::endl;
         fatal_error_report(USER_DEFINED_ERROR1, "SOCKET FATAL ERROR");
@@ -325,6 +340,7 @@ int NIMEASIROCReader::read_data_from_detectors()
         fatal_error_report(USER_DEFINED_ERROR2, "SOCKET TIMEOUT");
     }
     else {
+        //total data size = header size + data body size
         received_data_size += dataSize;
     }
     //TODO implement later
@@ -395,6 +411,7 @@ int NIMEASIROCReader::daq_run()
         if (ret > 0) {
             m_recv_byte_size = ret;
             set_data(m_recv_byte_size); // set data to OutPort Buffer
+            std::cout << __FILE__ << " L." << __LINE__ << " sent data size to OutPort " << m_recv_byte_size << std::endl;
         }
     }
 
@@ -479,36 +496,6 @@ unsigned int NIMEASIROCReader::unpackBigEndian32(const unsigned char* array4byte
 
 
 
-bool NIMEASIROCReader::isAdcHg(unsigned int data)
-{
-  return (data & 0x00680000) == 0x00000000;
-}
-
-
-bool NIMEASIROCReader::isAdcLg(unsigned int data)
-{
-  return (data & 0x00680000) == 0x00080000;
-}
-
-
-bool NIMEASIROCReader::isTdcLeading(unsigned int data)
-{
-  return (data & 0x00601000) == 0x00201000;
-}
-
-
-bool NIMEASIROCReader::isTdcTrailing(unsigned int data)
-{
-  return (data & 0x00601000) == 0x00200000;
-}
-
-
-bool NIMEASIROCReader::isScaler(unsigned int data)
-{
-  return (data & 0x00600000) == 0x00400000;
-}
-
-
 unsigned int NIMEASIROCReader::Decode32bitWord(unsigned int word32bit)
 {
   //check data format
@@ -530,6 +517,7 @@ bool NIMEASIROCReader::datacheck(std::vector <unsigned char> data)
 {
   size_t NWordData = data.size()/sizeof(int);
   unsigned char dataoneblock[4];
+  bool isAllOK=true;
   for(unsigned int i=0;i<NWordData;i++){
     dataoneblock[0] = data.at(i/4   );
     dataoneblock[1] = data.at(i/4 + 1);
@@ -538,8 +526,9 @@ bool NIMEASIROCReader::datacheck(std::vector <unsigned char> data)
     unsigned int data32 = unpackBigEndian32(dataoneblock);
     unsigned int ret = Decode32bitWord(data32);
     bool isOKword = (ret >> 27) ;
+    isAllOK |= isOKword;
   }
-  return true;
+  return isAllOK;
 }
 
 

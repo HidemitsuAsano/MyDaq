@@ -38,8 +38,7 @@ namespace NIMEASIROC{
   const unsigned char sendTdcBit = 0x04;
   const unsigned char sendScalerBit = 0x08;
   
-  //
-  const int headersize = 4;//bytes
+  const int headersize = 4;//bytes. fixed value;
   const unsigned int normalframe     = 0x80000000;
   const unsigned int headercheckmask = 0x80808080;
 }
@@ -84,26 +83,23 @@ private:
       
     //utility function
     unsigned int unpackBigEndian32(const unsigned char* array4byte);
-    bool isAdcHg(unsigned int data);
-    bool isAdcLg(unsigned int data);
-    bool isTdcLeading(unsigned int data);
-    bool isTdcTrailing(unsigned int data);
-    bool isScaler(unsigned int data);
     unsigned int Decode32bitWord(unsigned int word32bit);
     bool datacheck(std::vector <unsigned char> data);
 
-    //nim easiroc specified function
+    //nim easiroc slow control
     void DaqMode();
     void MonitorMode();
 
 
     DAQMW::Sock* m_sock;               /// socket for data server
-
-    static const int EVENT_BYTE_SIZE  = 8;    // event byte size
-    static const int SEND_BUFFER_SIZE = 1024; //
+    
+    //from example code
+    //static const int EVENT_BYTE_SIZE  = 8;    // event byte size
+    //static const int SEND_BUFFER_SIZE = 1024; //
     //unsigned char m_data[SEND_BUFFER_SIZE];
-    std::vector <unsigned char> m_data;
+
     unsigned char m_header[NIMEASIROC::headersize];
+    std::vector <unsigned char> m_data;
     unsigned int  m_recv_byte_size;
 
     BufferStatus m_out_status;

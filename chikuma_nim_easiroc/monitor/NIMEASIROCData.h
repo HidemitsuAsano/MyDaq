@@ -1,14 +1,17 @@
 #ifndef NIMEASIROCDATA_H
 #define NIMEASIROCDATA_H
 
-const int ONE_EVENT_SIZE = 8;
+const int ONE_EVENT_SIZE = 4;//byte
 
 struct NIMEASIROCData {
-  unsigned char magic;
-  unsigned char format_ver;
-  unsigned char module_num;
-  unsigned char reserved;
-  unsigned int  data;
+  unsigned int  header;
+  //unsigned int  data;
+  int ch;
+  int Adchigh;
+  int Adclow;
+  int TdcLeading;
+  int TdcTrailing;
+  int Scaler;
 };
 
 #endif
