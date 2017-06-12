@@ -111,8 +111,14 @@ int NIMEASIROCReader::daq_configure()
     std::cout << execmd.c_str() << std::endl;
     std::cout << std::endl;
     if(sysout!=0){
+      std::cerr << "************************************" << std::endl;
       std::cerr << "NIM-EASIROC Initialization FAIL.... " << std::endl;
+      std::cerr << "************************************" << std::endl;
       return -1;
+    }else{
+      std::cout << "************************" << std::endl;
+      std::cout << "NIM-EASIROC Initialized " << std::endl;
+      std::cout << "************************" << std::endl;
     }
 
     //register configuration via SiTCP RBCP

@@ -1,12 +1,13 @@
 #!/bin/bash
 pgrep -fl Comp
-killall -KILL DaqOperatorComp
-killall -KILL DispatcherComp
-killall -KILL NIMEASIROCReaderComp
-killall -KILL NIMEASIROCMonitorComp
-killall -KILL NIMEASIROCLoggerComp
-killall -KILL SampleReaderComp
-killall -KILL SampleMonitorComp
-killall -KILL SampleLoggerComp
+killall -KILL -q xterm
+killall -KILL -q DaqOperatorComp
+killall -KILL -q DispatcherComp
+killall -KILL -q NIMEASIROCReaderComp
+killall -KILL -q NIMEASIROCMonitorComp
+killall -KILL -q NIMEASIROCLoggerComp
+killall -KILL -q SampleReaderComp
+killall -KILL -q SampleMonitorComp
+killall -KILL -q SampleLoggerComp
 #pkill -f Comp
 
