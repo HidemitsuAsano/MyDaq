@@ -52,6 +52,7 @@ public:
     int  open_file(std::string dir_name, char* stream_buf,
                    unsigned int buf_size);
     int  close_file();
+    int  copy_logfiles(std::string dir_name);
 
 private:
     void set_max_size(unsigned long long size);

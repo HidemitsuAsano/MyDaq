@@ -225,6 +225,7 @@ int NIMEASIROCLogger::daq_stop()
         }
         fileUtils->close_file();
     }
+    fileUtils->copy_logfiles(m_dirName);
 
     reset_InPort();
     return 0;

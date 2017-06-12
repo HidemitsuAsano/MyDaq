@@ -228,7 +228,7 @@ int NIMEASIROCMonitor::daq_stop()
     std::cerr << "*** NIMEASIROCMonitor::stop" << std::endl;
 
     //m_hist->Draw();
-    m_canvas->Update();
+    //m_canvas->Update();
 
     reset_InPort();
 

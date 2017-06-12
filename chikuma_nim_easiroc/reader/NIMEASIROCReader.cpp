@@ -13,8 +13,6 @@
 
 
 #include "SiTcpRbcp.hh"
-#include "getaddr.h"
-#include "HexDump.hh"
 #include "NIMEASIROCReader.h"
 
 using DAQMW::FatalType::DATAPATH_DISCONNECTED;
@@ -112,6 +110,10 @@ int NIMEASIROCReader::daq_configure()
     std::cout << __FILE__  << " L." << __LINE__ << " system command executed. " << sysout << std::endl;
     std::cout << execmd.c_str() << std::endl;
     std::cout << std::endl;
+    if(sysout!=0){
+      std::cerr << "NIM-EASIROC Initialization FAIL.... " << std::endl;
+      return -1;
+    }
 
     //register configuration via SiTCP RBCP
     if (!m_rbcp) {
@@ -321,8 +323,9 @@ int NIMEASIROCReader::read_data_from_detectors()
     //if(!m_data.empty(){
     //  std::cerr << __FILE__ << " L." << __LINE__ << "m_data is not empty !!" << std::endl;
     //}
-    std::cout << __FILE__ << " L." << __LINE__ << " body data size " << dataSize << std::endl;
-
+    if(m_debug){
+      std::cout << __FILE__ << " L." << __LINE__ << " body data size " << dataSize << std::endl;
+    }
     m_data.clear();
     m_data.resize(NIMEASIROC::headersize + dataSize);
     //std::copy(m_header.begin(),m_header.end(),back_inserter(m_data));
@@ -411,7 +414,9 @@ int NIMEASIROCReader::daq_run()
         if (ret > 0) {
             m_recv_byte_size = ret;
             set_data(m_recv_byte_size); // set data to OutPort Buffer
-            std::cout << __FILE__ << " L." << __LINE__ << " sent data size to OutPort " << m_recv_byte_size << std::endl;
+            if(m_debug){
+              std::cout << __FILE__ << " L." << __LINE__ << " sent data size to OutPort " << m_recv_byte_size << std::endl;
+            }
         }
     }
 

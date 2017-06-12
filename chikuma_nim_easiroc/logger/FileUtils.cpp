@@ -230,6 +230,8 @@ int FileUtils::close_file()
 {
     m_file_info.file->close();
     if (m_file_info.file) {
+        std::string cmd = "chmod 444 " + m_file_info.file_path;
+        int sysout = system(cmd.c_str());
         return 0;
     }
     else {
@@ -237,6 +239,59 @@ int FileUtils::close_file()
         return -1;
     }
 }
+
+int FileUtils::copy_logfiles(std::string dir_name)
+{
+
+  //copy log files from /tmp/daqmw
+  std::string datafilename = gen_file_name(true);
+  for(int i =0;i<4;i++) datafilename.erase(datafilename.size()-1);
+  std::string logname_reader = dir_name + "/log.NIMEASIROCReaderComp_" + datafilename; 
+  const boost::filesystem::path logfilereader_a = logname_reader;
+  const boost::filesystem::path logfilereader_b = "/tmp/daqmw/log.NIMEASIROCReaderComp";
+  try{
+    boost::filesystem::copy_file(logfilereader_b,logfilereader_a);
+  }catch( boost::filesystem::filesystem_error& ex){
+    std::cout << ex.what() << std::endl;
+    throw;
+  }
+  
+  
+  std::string logname_monitor = dir_name + "/log.NIMEASIROCMonitorComp_" + datafilename; 
+  const boost::filesystem::path logfilemonitor_a = logname_monitor;
+  const boost::filesystem::path logfilemonitor_b = "/tmp/daqmw/log.NIMEASIROCMonitorComp";
+  try{
+    boost::filesystem::copy_file(logfilemonitor_b,logfilemonitor_a);
+  }catch( boost::filesystem::filesystem_error& ex){
+    std::cout << ex.what() << std::endl;
+    throw;
+  }
+
+  std::string logname_logger = dir_name + "/log.NIMEASIROCLoggerComp_" + datafilename; 
+  const boost::filesystem::path logfilelogger_a = logname_logger;
+  const boost::filesystem::path logfilelogger_b = "/tmp/daqmw/log.NIMEASIROCLoggerComp";
+  try{
+    boost::filesystem::copy_file(logfilelogger_b,logfilelogger_a);
+  }catch( boost::filesystem::filesystem_error& ex){
+    std::cout << ex.what() << std::endl;
+    throw;
+  }
+
+  std::string logname_dispatcher = dir_name + "/log.DispatcherComp_" + datafilename; 
+  const boost::filesystem::path logfiledispatcher_a = logname_dispatcher;
+  const boost::filesystem::path logfiledispatcher_b = "/tmp/daqmw/log.DispatcherComp";
+  try{
+    boost::filesystem::copy_file(logfiledispatcher_b,logfiledispatcher_a);
+  }catch( boost::filesystem::filesystem_error& ex){
+    std::cout << ex.what() << std::endl;
+    throw;
+  }
+
+
+  return 0;
+
+}
+
 
 int FileUtils::open_file_incr_branch(std::string dir_name)
 {
@@ -297,7 +352,7 @@ std::string FileUtils::gen_file_name(bool incr_branch)
         m_file_info.name_main = date_time;
     }
 
-    file_br_no << std::setw(3)
+    file_br_no << std::setw(1)
                << std::setfill('0')
                << m_file_info.branch_no;
 
@@ -331,4 +386,6 @@ std::string FileUtils::gen_file_name(bool incr_branch)
     }
     return fileName;
 }
+
+
 
